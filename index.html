@@ -52,7 +52,7 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1cW55eHVhbm96ZXNobXNkZGh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NjEyODIsImV4cCI6MjA3NTIzNzI4Mn0.HXTUbD0PY61T6Z2WRuJNb53ZqM-4mMDxH7VeGMvKGUE'; // Replace with your Anon Key
         const N8N_WEBHOOK_URL = 'https://n8n.srv898271.hstgr.cloud/webhook/approval-handler'; // Replace with your n8n webhook
 
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
 
@@ -63,7 +63,7 @@
             }
 
             // 1. Fetch PDF Data from Supabase using the token
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('manager_client_contacts')
                 .select('pdf_url, location')
                 .eq('token', token)
