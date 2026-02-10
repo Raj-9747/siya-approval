@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Approval | SIYA</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background-color: #f4f7f6; display: flex; flex-direction: column; height: 100vh; }
+        header { background: #333; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .logo { font-weight: bold; font-size: 1.2rem; letter-spacing: 1px; }
+        
+        #pdf-container { flex-grow: 1; border: none; width: 100%; }
+        
+        .action-bar { background: white; padding: 20px; display: flex; justify-content: center; gap: 20px; border-top: 1px solid #ddd; }
+        
+        button { padding: 12px 30px; font-size: 16px; font-weight: 600; border: none; border-radius: 5px; cursor: pointer; transition: transform 0.1s, opacity 0.2s; }
+        button:active { transform: scale(0.98); }
+        
+        .btn-approve { background-color: #27ae60; color: white; }
+        .btn-reject { background-color: #e74c3c; color: white; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+
+        /* Loading Overlay */
+        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); display: flex; justify-content: center; align-items: center; flex-direction: column; z-index: 1000; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #333; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div id="overlay">
+        <div class="spinner"></div>
+        <p id="status-text">Loading Document...</p>
+    </div>
+
+    <header>
+        <div class="logo">SIYA | APPROVAL PORTAL</div>
+        <div id="location-display">Site Location</div>
+    </header>
+
+    <iframe id="pdf-container" src=""></iframe>
+
+    <div class="action-bar">
+        <button class="btn-reject" onclick="handleAction('rejected')">REJECT</button>
+        <button class="btn-approve" onclick="handleAction('accepted')">APPROVE</button>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const SUPABASE_URL = 'https://zuqnyxuanozeshmsddhx.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1cW55eHVhbm96ZXNobXNkZGh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NjEyODIsImV4cCI6MjA3NTIzNzI4Mn0.HXTUbD0PY61T6Z2WRuJNb53ZqM-4mMDxH7VeGMvKGUE'; // Replace with your Anon Key
+        const N8N_WEBHOOK_URL = 'https://n8n.srv898271.hstgr.cloud/webhook/approval-handler'; // Replace with your n8n webhook
+
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+
+        async function init() {
+            if (!token) {
+                document.getElementById('status-text').innerText = "Error: No token found in URL.";
+                return;
+            }
+
+            // 1. Fetch PDF Data from Supabase using the token
+            const { data, error } = await supabase
+                .from('manager_client_contacts')
+                .select('pdf_url, location')
+                .eq('token', token)
+                .single();
+
+            if (error || !data) {
+                document.getElementById('status-text').innerText = "Document not found or expired.";
+                console.error(error);
+            } else {
+                document.getElementById('pdf-container').src = data.pdf_url;
+                document.getElementById('location-display').innerText = data.location.toUpperCase();
+                document.getElementById('overlay').style.display = 'none';
+            }
+        }
+
+        async function handleAction(status) {
+            const confirmAction = confirm(`Are you sure you want to mark this as ${status}?`);
+            if (!confirmAction) return;
+
+            document.getElementById('overlay').style.display = 'flex';
+            document.getElementById('status-text').innerText = "Sending response...";
+
+            try {
+                // 2. Send the status and token to n8n Webhook
+                const response = await fetch(N8N_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        token: token,
+                        status: status,
+                        action_date: new Date().toISOString()
+                    })
+                });
+
+                if (response.ok) {
+                    document.getElementById('status-text').innerText = `Thank you! Document has been ${status}.`;
+                    document.querySelector('.action-bar').style.display = 'none';
+                } else {
+                    throw new Error('Failed to send to n8n');
+                }
+            } catch (err) {
+                alert("Error sending response. Please try again.");
+                document.getElementById('overlay').style.display = 'none';
+            }
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
