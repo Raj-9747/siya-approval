@@ -82,12 +82,13 @@
         async function handleAction(status) {
             const confirmAction = confirm(`Are you sure you want to mark this as ${status}?`);
             if (!confirmAction) return;
-
+        
+            // Show overlay and spinner
             document.getElementById('overlay').style.display = 'flex';
+            document.querySelector('.spinner').style.display = 'block'; // Ensure spinner is visible
             document.getElementById('status-text').innerText = "Sending response...";
-
+        
             try {
-                // 2. Send the status and token to n8n Webhook
                 const response = await fetch(N8N_WEBHOOK_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -97,10 +98,22 @@
                         action_date: new Date().toISOString()
                     })
                 });
-
+        
                 if (response.ok) {
-                    document.getElementById('status-text').innerText = `Thank you! Document has been ${status}.`;
+                    // 1. Hide the spinner so it stops moving
+                    document.querySelector('.spinner').style.display = 'none';
+                    
+                    // 2. Update the text
+                    document.getElementById('status-text').innerHTML = `
+                        <div style="font-size: 24px; color: #27ae60; font-weight: bold;">✓ Success</div>
+                        <p>Thank you! The document has been ${status}.</p>
+                    `;
+                    
+                    // 3. Hide the action buttons
                     document.querySelector('.action-bar').style.display = 'none';
+                    
+                    // Optional: Keep the overlay visible to show the success message, 
+                    // but the spinner is now gone.
                 } else {
                     throw new Error('Failed to send to n8n');
                 }
@@ -109,6 +122,37 @@
                 document.getElementById('overlay').style.display = 'none';
             }
         }
+
+        // async function handleAction(status) {
+        //     const confirmAction = confirm(`Are you sure you want to mark this as ${status}?`);
+        //     if (!confirmAction) return;
+
+        //     document.getElementById('overlay').style.display = 'flex';
+        //     document.getElementById('status-text').innerText = "Sending response...";
+
+        //     try {
+        //         // 2. Send the status and token to n8n Webhook
+        //         const response = await fetch(N8N_WEBHOOK_URL, {
+        //             method: 'POST',
+        //             headers: { 'Content-Type': 'application/json' },
+        //             body: JSON.stringify({
+        //                 token: token,
+        //                 status: status,
+        //                 action_date: new Date().toISOString()
+        //             })
+        //         });
+
+        //         if (response.ok) {
+        //             document.getElementById('status-text').innerText = `Thank you! Document has been ${status}.`;
+        //             document.querySelector('.action-bar').style.display = 'none';
+        //         } else {
+        //             throw new Error('Failed to send to n8n');
+        //         }
+        //     } catch (err) {
+        //         alert("Error sending response. Please try again.");
+        //         document.getElementById('overlay').style.display = 'none';
+        //     }
+        // }
 
         window.onload = init;
     </script>
